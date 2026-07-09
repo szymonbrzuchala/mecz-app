@@ -1,5 +1,5 @@
 // Wklej tutaj wygenerowany URL z wdrożenia Google Apps Script:
-const SCRIPT_URL = "TUTAJ_WKLEJ_SWOJ_URL_Z_APPS_SCRIPT";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyidnNl0S8w0t76CFWC-nFVrHoGnpeVcB5ArCGFzqZn4M8rOry8fPdMxYtbzQIoS9Tw/exec";
 
 let playersData = [];
 let currentTeams = null;

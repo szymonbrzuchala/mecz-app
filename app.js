@@ -1,4 +1,5 @@
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzfjPZUsec8-4wwws3rELYVCRDNFLb0M1FbjZ1IrTq2ba2Gz3XYfB7NYxLLzHZeCPk/exec";
+// Identyfikator wdrożenia Apps Script
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyMoaL2KqM2UJ3tMS-fO8CwM4_01sJ4fBZuIP3h8LEmwaMfHRHux9Px2-KqsF3egbzx/exec";
 const ADMIN_PASSWORD = "pilkanozna";
 
 let playersData = [];
@@ -6,7 +7,10 @@ let availableDates = [];
 let selectedDate = "";
 let currentTeams = null;
 
-// --- SYSTEM ZAKŁADEK I HASŁA ---
+// ==========================================
+// 1. NAWIGACJA, HASŁO I OBSŁUGA ZAKŁADEK
+// ==========================================
+
 function switchTab(tabId, buttonEl) {
   document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
@@ -39,14 +43,14 @@ function checkAdminPassword() {
   const input = document.getElementById("admin-password-input");
   const errorMsg = document.getElementById("auth-error");
 
-  if (input.value === ADMIN_PASSWORD) {
+  if (input && input.value === ADMIN_PASSWORD) {
     sessionStorage.setItem("isAdminAuthenticated", "true");
     document.getElementById("auth-container").style.display = "none";
     document.getElementById("management-content").style.display = "block";
     input.value = "";
-    errorMsg.style.display = "none";
+    if (errorMsg) errorMsg.style.display = "none";
     renderManagePlayers();
-  } else {
+  } else if (errorMsg) {
     errorMsg.style.display = "block";
   }
 }
@@ -62,7 +66,11 @@ document.getElementById("admin-password-input")?.addEventListener("keyup", funct
   }
 });
 
-// --- POBIERANIE I OBSŁUGA DANYCH ---
+
+// ==========================================
+// 2. ODCZYT I ZAPIS DANYCH GOOGLE SHEETS
+// ==========================================
+
 async function loadData() {
   const listDiv = document.getElementById('playersList');
   if (listDiv) listDiv.innerHTML = '<i>Ładowanie danych z Google Sheets...</i>';
@@ -96,13 +104,18 @@ function renderDates() {
   availableDates.forEach(d => {
     select.innerHTML += `<option value="${d}" ${d === selectedDate ? 'selected' : ''}>${d}</option>`;
   });
-  document.getElementById('selectedDateTitle').innerText = selectedDate || "Brak";
+  const dateTitle = document.getElementById('selectedDateTitle');
+  if (dateTitle) dateTitle.innerText = selectedDate || "Brak";
 }
 
 function onDateChange() {
-  selectedDate = document.getElementById('dateSelect').value;
-  document.getElementById('selectedDateTitle').innerText = selectedDate;
-  render();
+  const select = document.getElementById('dateSelect');
+  if (select) {
+    selectedDate = select.value;
+    const dateTitle = document.getElementById('selectedDateTitle');
+    if (dateTitle) dateTitle.innerText = selectedDate;
+    render();
+  }
 }
 
 async function onCalendarPick(dateVal) {
@@ -148,10 +161,14 @@ async function saveAttendance() {
     body: JSON.stringify({ action: "UPDATE_ATTENDANCE", dateStr: selectedDate, attendanceMap: map })
   });
 
-  alert("Zapisano obecności na dzień " + selectedDate);
+  alert("Zapisano obecności dla daty: " + selectedDate);
 }
 
-// Renderowanie Strony Główny (Ukryte oceny)
+
+// ==========================================
+// 3. WIDOK STRONY GŁÓWNEJ (UKRYTE OCENY)
+// ==========================================
+
 function render() {
   const listDiv = document.getElementById('playersList');
   if (!listDiv) return;
@@ -177,7 +194,7 @@ function render() {
     });
   }
 
-  // Tabela Aktualna
+  // Tabela Aktualna / Rankingowa
   const tbody = document.querySelector('#rankTable tbody');
   if (tbody) {
     tbody.innerHTML = '';
@@ -198,10 +215,15 @@ function render() {
   }
 }
 
-// ALGORYTM LOSUJĄCY Z DODATKOWYMI GRACZAMI I RÓŻNORODNOŚCIĄ
+
+// ==========================================
+// 4. ADVANCED TEAM GENERATOR (5v5 / 6v6)
+// ==========================================
+
 function generateTeams() {
   const activePlayers = playersData.filter(p => (p.attendance && p.attendance[selectedDate] === 'y'));
-  const targetPerTeam = parseInt(document.getElementById('gameModeSelect').value);
+  const modeSelect = document.getElementById('gameModeSelect');
+  const targetPerTeam = modeSelect ? parseInt(modeSelect.value) : 6;
   const totalRequired = targetPerTeam * 2;
 
   if (activePlayers.length === 0) return alert("Brak obecnych graczy (zaznaczonych jako Y)!");
@@ -209,7 +231,7 @@ function generateTeams() {
   const avgRating = activePlayers.reduce((acc, p) => acc + p.currentRating, 0) / activePlayers.length;
   let pool = activePlayers.map(p => ({ name: p.name, rating: p.currentRating }));
 
-  // Dopełnianie "Dodatkowymi Graczymi"
+  // Automatyczne dodawanie "Dodatkowego Gracza" jeśli brakuje do pełnego składu
   const missingCount = totalRequired - pool.length;
   if (missingCount > 0) {
     for (let i = 1; i <= missingCount; i++) {
@@ -248,16 +270,25 @@ function generateTeams() {
   const sum1 = selectedCombo.t1.reduce((acc, p) => acc + p.rating, 0).toFixed(2);
   const sum2 = selectedCombo.t2.reduce((acc, p) => acc + p.rating, 0).toFixed(2);
 
-  document.getElementById('team1Box').innerHTML = `
-    <h3>Drużyna A (Siła: ${sum1})</h3>
-    <ul>${selectedCombo.t1.map(p => `<li>${p.name}</li>`).join('')}</ul>
-  `;
-  document.getElementById('team2Box').innerHTML = `
-    <h3>Drużyna B (Siła: ${sum2})</h3>
-    <ul>${selectedCombo.t2.map(p => `<li>${p.name}</li>`).join('')}</ul>
-  `;
+  const t1Box = document.getElementById('team1Box');
+  const t2Box = document.getElementById('team2Box');
 
-  document.getElementById('matchSection').style.display = 'block';
+  if (t1Box) {
+    t1Box.innerHTML = `
+      <h3>Drużyna A (Siła: ${sum1})</h3>
+      <ul>${selectedCombo.t1.map(p => `<li>${p.name}</li>`).join('')}</ul>
+    `;
+  }
+
+  if (t2Box) {
+    t2Box.innerHTML = `
+      <h3>Drużyna B (Siła: ${sum2})</h3>
+      <ul>${selectedCombo.t2.map(p => `<li>${p.name}</li>`).join('')}</ul>
+    `;
+  }
+
+  const matchSection = document.getElementById('matchSection');
+  if (matchSection) matchSection.style.display = 'block';
 }
 
 async function recordMatch(winnerTeam) {
@@ -278,12 +309,18 @@ async function recordMatch(winnerTeam) {
     body: JSON.stringify(payload)
   });
 
-  document.getElementById('matchSection').style.display = 'none';
+  const matchSection = document.getElementById('matchSection');
+  if (matchSection) matchSection.style.display = 'none';
+
   alert("Wynik meczu został wysłany do Google Sheets!");
   setTimeout(loadData, 1500);
 }
 
-// PANEL ZARZĄDZANIA ZAWODNIKAMI
+
+// ==========================================
+// 5. PANELI ZARZĄDZANIA ZAWODNIKAMI
+// ==========================================
+
 function renderManagePlayers() {
   const container = document.getElementById('managePlayersList');
   if (!container) return;
@@ -305,6 +342,8 @@ function renderManagePlayers() {
 async function addPlayer() {
   const nameInput = document.getElementById('pName');
   const ratingInput = document.getElementById('pRating');
+
+  if (!nameInput || !ratingInput) return;
 
   const name = nameInput.value.trim();
   const rating = parseFloat(ratingInput.value);
@@ -353,7 +392,11 @@ async function updateRatingPrompt(name, currentBase) {
   setTimeout(loadData, 1500);
 }
 
-// PRZEGLĄD WYNIKÓW
+
+// ==========================================
+// 6. PRZEGLĄD WYNIKÓW W KALENDARZU
+// ==========================================
+
 function renderHistoryTable() {
   const thead = document.querySelector('#historyTable thead');
   const tbody = document.querySelector('#historyTable tbody');
@@ -376,5 +419,5 @@ function renderHistoryTable() {
   });
 }
 
-// Inicjalne ładowanie
+// Start aplikacji przy załadowaniu pliku
 loadData();

@@ -1,4 +1,4 @@
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyidnNl0S8w0t76CFWC-nFVrHoGnpeVcB5ArCGFzqZn4M8rOry8fPdMxYtbzQIoS9Tw/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyvhuKQaxyD1GIMDsGykJfBnYXIcRrvnZJmfKmyzL-Y-QOyEg66wAn38W6PwbFGu0Tz9w/exec";
 const ADMIN_PASSWORD = "pilkanozna";
 
 let playersData = [];

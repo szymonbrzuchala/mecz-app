@@ -3,80 +3,153 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>System Losowania Drużyn i Tabela</title>
+  <title>System Losowania Drużyn i Rozgrywek</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f6f9; color: #333; }
-    .card { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-    button { background-color: #28a745; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; font-size: 14px; margin: 2px; }
-    button:hover { background-color: #218838; }
-    input, select { padding: 8px; margin-right: 10px; border: 1px solid #ccc; border-radius: 4px; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background-color: #f0f2f5; color: #333; }
+    h1 { margin-top: 0; color: #1a252f; }
+    
+    /* Menu Zakładek */
+    .nav-tabs { display: flex; background: #fff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; overflow: hidden; }
+    .nav-tab { flex: 1; padding: 15px; text-align: center; background: #fff; border: none; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.3s; color: #555; }
+    .nav-tab:hover { background: #e9ecef; }
+    .nav-tab.active { background: #007bff; color: white; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* Karty i Przyciski */
+    .card { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.08); }
+    button { background-color: #28a745; color: white; border: none; padding: 10px 16px; border-radius: 5px; cursor: pointer; font-size: 14px; margin: 3px; }
+    button:hover { opacity: 0.9; }
+    .btn-blue { background-color: #007bff; }
+    .btn-danger { background-color: #dc3545; }
+    
+    input, select { padding: 9px; margin-right: 8px; border: 1px solid #ccc; border-radius: 5px; font-size: 14px; }
     table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-    th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+    th, td { border: 1px solid #e0e0e0; padding: 10px; text-align: center; }
     th { background-color: #007bff; color: white; }
+
+    /* Wylosowane Składy */
     .teams-grid { display: flex; gap: 20px; margin-top: 15px; }
-    .team-box { flex: 1; background: #e9ecef; padding: 15px; border-radius: 6px; }
-    .status-y { background-color: #d4edda; color: #155724; font-weight: bold; padding: 2px 6px; border-radius: 4px; }
-    .status-x { background-color: #f8d7da; color: #721c24; font-weight: bold; padding: 2px 6px; border-radius: 4px; }
+    .team-box { flex: 1; background: #f8f9fa; padding: 15px; border-radius: 6px; border: 1px solid #dee2e6; }
+    .match-buttons-row { display: flex; justify-content: space-between; gap: 10px; margin-top: 20px; }
+    .match-btn { flex: 1; padding: 15px; font-size: 16px; font-weight: bold; }
+
+    /* Oznaczenia obecności */
+    .status-y { background-color: #d4edda; color: #155724; font-weight: bold; padding: 4px 8px; border-radius: 4px; }
+    .status-x { background-color: #f8d7da; color: #721c24; font-weight: bold; padding: 4px 8px; border-radius: 4px; }
+    .player-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }
   </style>
 </head>
 <body>
 
-  <h1>⚽ Generator Drużyn i Kalendarz Rozgrywek</h1>
+  <h1>⚽ System Losowania Drużyn</h1>
 
-  <section class="card">
-    <h2>📅 Wybór Daty Meczu</h2>
-    <label>Wybierz datę spotkania:</label>
-    <select id="dateSelect" onchange="onDateChange()"></select>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="switchTab('tab-main', this)">🏠 Strona Główna (Losowanie)</button>
+    <button class="nav-tab" onclick="switchTab('tab-players', this)">⚙️ Zarządzanie Zawodnikami</button>
+    <button class="nav-tab" onclick="switchTab('tab-history', this)">📊 Przegląd Wyników</button>
+  </div>
+
+  <div id="tab-main" class="tab-content active">
+    <section class="card">
+      <h2>📅 Wybór Daty i Trybu Gry</h2>
+      <label><b>Wybierz Datę z Listy:</b></label>
+      <select id="dateSelect" onchange="onDateChange()"></select>
+      <label style="margin-left: 15px;"><b>Lub wybierz z kalendarza:</b></label>
+      <input type="date" id="calendarPicker" onchange="onCalendarPick(this.value)">
+      <br><br>
+      <label><b>Tryb Gry:</b></label>
+      <select id="gameModeSelect" onchange="render()">
+        <option value="6">Gramy po 6 osób (12 zawodników)</option>
+        <option value="5">Gramy po 5 osób (10 zawodników)</option>
+      </select>
+    </section>
+
+    <section class="card">
+      <h2>📋 Wybór Obecności Zawodników na Dzień: <span id="selectedDateTitle"></span></h2>
+      <div id="playersList">Ładowanie danych z Google Sheets...</div>
+      <br>
+      <button onclick="saveAttendance()">💾 Zapisz Wybór Obecności</button>
+      <button class="btn-blue" onclick="generateTeams()">🎲 Losuj Składy</button>
+    </section>
+
+    <section class="card" id="matchSection" style="display:none;">
+      <h2>⚖️ Wylosowane Składy</h2>
+      <div class="teams-grid">
+        <div id="team1Box" class="team-box"></div>
+        <div id="team2Box" class="team-box"></div>
+      </div>
+      
+      <h3>Wpisz Wynik Meczu:</h3>
+      <div class="match-buttons-row">
+        <button class="match-btn btn-blue" onclick="recordMatch(1)">👈 Wygrana Drużyny A</button>
+        <button class="match-btn" style="background-color: #6c757d;" onclick="recordMatch(0)">🤝 Remis</button>
+        <button class="match-btn btn-blue" onclick="recordMatch(2)">Wygrana Drużyny B 👉</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>🏆 Tabela Aktualna</h2>
+      <table id="rankTable">
+        <thead>
+          <tr>
+            <th>Miejsce</th>
+            <th>Gracz</th>
+            <th>Wygrane (W)</th>
+            <th>Remisy (D)</th>
+            <th>Porażki (L)</th>
+            <th>Aktualny Rating</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+  </div>
+
+  <div id="tab-players" class="tab-content">
     
-    <input type="text" id="newDateInput" placeholder="np. 20.07.2026">
-    <button onclick="addNewDate()">➕ Dodaj Nową Datę</button>
-  </section>
-
-  <section class="card">
-    <h2>📋 Lista Obecności na Dzień <span id="selectedDateTitle"></span></h2>
-    <p>Legenda: <span class="status-y">y</span> = Obecny | <span class="status-x">x</span> = Nieobecny</p>
-    <div id="playersList">Ładowanie z Google Sheets...</div>
-    <br>
-    <button onclick="saveAttendance()">💾 Zapisz Obecności</button>
-    <button onclick="generateBalancedTeams()" style="background-color: #007bff;">🎲 Losuj Składy z Obecnych (y)</button>
-  </section>
-
-  <section class="card" id="matchSection" style="display:none;">
-    <h2>⚖️ Wylosowane Składy</h2>
-    <div class="teams-grid">
-      <div id="team1Box" class="team-box"></div>
-      <div id="team2Box" class="team-box"></div>
+    <div id="auth-container" class="card" style="max-width: 400px; margin: 40px auto; text-align: center;">
+      <h3>🔒 Dostęp zablokowany</h3>
+      <p>Podaj hasło, aby przejść do panelu zarządzania:</p>
+      <div style="margin: 15px 0;">
+        <input type="password" id="admin-password-input" placeholder="Wpisz hasło..." style="padding: 8px; width: 80%; font-size: 16px;">
+      </div>
+      <button onclick="checkAdminPassword()" style="padding: 10px 20px; font-size: 16px;">Zaloguj</button>
+      <p id="auth-error" style="color: red; display: none; margin-top: 10px;">Nieprawidłowe hasło!</p>
     </div>
-    <br>
-    <h3>Zapisz Wynik Meczu:</h3>
-    <button onclick="recordMatch(1)">Wygrała Drużyna 1 (+0.3 pkt / 3 pkt w kalendarzu)</button>
-    <button onclick="recordMatch(0)">Remis (+0.1 pkt / 1 pkt w kalendarzu)</button>
-    <button onclick="recordMatch(2)">Wygrała Drużyna 2 (+0.3 pkt / 3 pkt w kalendarzu)</button>
-  </section>
 
-  <section class="card">
-    <h2>➕ Dodaj Zawodnika</h2>
-    <input type="text" id="pName" placeholder="Imię i Nazwisko">
-    <input type="number" id="pRating" placeholder="Ocena (1-10)" min="1" max="10" step="0.5">
-    <button onclick="addPlayer()">Dodaj Gracza</button>
-  </section>
+    <div id="management-content" style="display: none;">
+      <div class="card" style="display: flex; justify-content: space-between; align-items: center;">
+        <h2>⚙️ Panel Zarządzania Zawodnikami</h2>
+        <button onclick="logoutAdmin()" class="btn-danger">Wyloguj</button>
+      </div>
 
-  <section class="card">
-    <h2>🏆 Tabela i Ranking Ogólny</h2>
-    <table id="rankTable">
-      <thead>
-        <tr>
-          <th>Gracz</th>
-          <th>Ocena Bazy (1-10)</th>
-          <th>Wygrane (W)</th>
-          <th>Remisy (D)</th>
-          <th>Porażki (L)</th>
-          <th>Aktualny Rating</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-  </section>
+      <section class="card">
+        <h2>➕ Dodaj Nowego Zawodnika</h2>
+        <input type="text" id="pName" placeholder="Imię i Nazwisko">
+        <input type="number" id="pRating" placeholder="Ocena (1-10)" min="1" max="10" step="0.5">
+        <button onclick="addPlayer()">Dodaj Zawodnika</button>
+      </section>
+
+      <section class="card">
+        <h2>⚙️ Lista Zawodników i Edycja Ocen</h2>
+        <div id="managePlayersList"></div>
+      </section>
+    </div>
+  </div>
+
+  <div id="tab-history" class="tab-content">
+    <section class="card">
+      <h2>📊 Przegląd Wyników i Obecności w Kalendarzu</h2>
+      <p>Poniższa tabela przedstawia historie obecności i punkty zdobyte w poszczególnych terminach:</p>
+      <div style="overflow-x: auto;">
+        <table id="historyTable">
+          <thead></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
 
   <script src="app.js"></script>
 </body>

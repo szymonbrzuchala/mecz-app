@@ -1,11 +1,67 @@
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyvhuKQaxyD1GIMDsGykJfBnYXIcRrvnZJmfKmyzL-Y-QOyEg66wAn38W6PwbFGu0Tz9w/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyidnNl0S8w0t76CFWC-nFVrHoGnpeVcB5ArCGFzqZn4M8rOry8fPdMxYtbzQIoS9Tw/exec";
+const ADMIN_PASSWORD = "pilkanozna";
 
 let playersData = [];
 let availableDates = [];
 let selectedDate = "";
 let currentTeams = null;
 
-// Odczyt danych z Google Sheets
+// --- SYSTEM ZAKŁADEK I HASŁA ---
+function switchTab(tabId, buttonEl) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
+  
+  document.getElementById(tabId).classList.add('active');
+  if (buttonEl) buttonEl.classList.add('active');
+
+  if (tabId === 'tab-players') {
+    openManagementTab();
+  } else if (tabId === 'tab-history') {
+    renderHistoryTable();
+  }
+}
+
+function openManagementTab() {
+  const isAuthenticated = sessionStorage.getItem("isAdminAuthenticated") === "true";
+  if (isAuthenticated) {
+    document.getElementById("auth-container").style.display = "none";
+    document.getElementById("management-content").style.display = "block";
+    renderManagePlayers();
+  } else {
+    document.getElementById("auth-container").style.display = "block";
+    document.getElementById("management-content").style.display = "none";
+  }
+}
+
+function checkAdminPassword() {
+  const input = document.getElementById("admin-password-input");
+  const errorMsg = document.getElementById("auth-error");
+
+  if (input.value === ADMIN_PASSWORD) {
+    sessionStorage.setItem("isAdminAuthenticated", "true");
+    document.getElementById("auth-container").style.display = "none";
+    document.getElementById("management-content").style.display = "block";
+    input.value = "";
+    errorMsg.style.display = "none";
+    renderManagePlayers();
+  } else {
+    errorMsg.style.display = "block";
+  }
+}
+
+function logoutAdmin() {
+  sessionStorage.removeItem("isAdminAuthenticated");
+  openManagementTab();
+}
+
+document.getElementById("admin-password-input")?.addEventListener("keyup", function(event) {
+  if (event.key === "Enter") {
+    checkAdminPassword();
+  }
+});
+
+
+// --- POBIERANIE I OBSŁUGA DANYCH ---
 async function loadData() {
   try {
     const response = await fetch(SCRIPT_URL);
@@ -15,7 +71,7 @@ async function loadData() {
     availableDates = result.dates || [];
 
     if (availableDates.length > 0 && !selectedDate) {
-      selectedDate = availableDates[availableDates.length - 1]; // Ostatnia data domyślnie
+      selectedDate = availableDates[availableDates.length - 1];
     }
 
     renderDates();
@@ -26,7 +82,6 @@ async function loadData() {
   }
 }
 
-// Obsługa wybierania daty
 function renderDates() {
   const select = document.getElementById('dateSelect');
   select.innerHTML = '';
@@ -42,23 +97,27 @@ function onDateChange() {
   render();
 }
 
-async function addNewDate() {
-  const dateInput = document.getElementById('newDateInput').value.trim();
-  if (!dateInput) return alert("Wpisz datę!");
+async function onCalendarPick(dateVal) {
+  if (!dateVal) return;
+  const parts = dateVal.split('-'); // YYYY-MM-DD -> DD.MM.YYYY
+  const formattedDate = `${parts[2]}.${parts[1]}.${parts[0]}`;
 
-  await fetch(SCRIPT_URL, {
-    method: "POST",
-    mode: "no-cors",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ action: "ADD_DATE", dateStr: dateInput })
-  });
-
-  selectedDate = dateInput;
-  document.getElementById('newDateInput').value = '';
-  setTimeout(loadData, 1500);
+  if (!availableDates.includes(formattedDate)) {
+    await fetch(SCRIPT_URL, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "ADD_DATE", dateStr: formattedDate })
+    });
+    selectedDate = formattedDate;
+    setTimeout(loadData, 1200);
+  } else {
+    selectedDate = formattedDate;
+    renderDates();
+    render();
+  }
 }
 
-// Przełącznik obecności y / x
 function togglePresence(idx) {
   const current = playersData[idx].attendance[selectedDate] || 'x';
   playersData[idx].attendance[selectedDate] = (current === 'y') ? 'x' : 'y';
@@ -78,11 +137,11 @@ async function saveAttendance() {
     body: JSON.stringify({ action: "UPDATE_ATTENDANCE", dateStr: selectedDate, attendanceMap: map })
   });
 
-  alert("Obecności na dzień " + selectedDate + " zostały zapisane!");
+  alert("Zapisano obecności na dzień " + selectedDate);
 }
 
+// Renderowanie Strony Główna (Ukryte oceny)
 function render() {
-  // Generowanie listy obecności
   const listDiv = document.getElementById('playersList');
   listDiv.innerHTML = '';
 
@@ -91,24 +150,26 @@ function render() {
     const badgeClass = status === 'y' ? 'status-y' : 'status-x';
     
     listDiv.innerHTML += `
-      <div style="margin-bottom: 8px;">
-        <button onclick="togglePresence(${idx})">Zmień status</button>
-        <span class="${badgeClass}">${status.toUpperCase()}</span>
-        <b>${p.name}</b> (Baza: ${p.baseRating} | <b>Rating: ${p.currentRating}</b>)
+      <div class="player-row">
+        <span><b>${p.name}</b></span>
+        <div>
+          <span class="${badgeClass}">${status.toUpperCase()}</span>
+          <button onclick="togglePresence(${idx})">Zmień Status</button>
+        </div>
       </div>
     `;
   });
 
-  // Tabela Ligowa
+  // Tabela Aktualna
   const tbody = document.querySelector('#rankTable tbody');
   tbody.innerHTML = '';
   const sorted = [...playersData].sort((a, b) => b.currentRating - a.currentRating);
 
-  sorted.forEach(p => {
+  sorted.forEach((p, index) => {
     tbody.innerHTML += `
       <tr>
+        <td><b>${index + 1}</b></td>
         <td><b>${p.name}</b></td>
-        <td>${p.baseRating}</td>
         <td>${p.wins}</td>
         <td>${p.draws}</td>
         <td>${p.losses}</td>
@@ -118,42 +179,63 @@ function render() {
   });
 }
 
-// Algorytm losujący wyłącznie na podstawie obecnych 'y'
-function generateBalancedTeams() {
-  const active = playersData.filter(p => (p.attendance[selectedDate] || 'x') === 'y');
-  if (active.length < 2) return alert("Musisz zaznaczyć przynajmniej dwóch graczy jako obecnych ('y') na wybrany dzień!");
+// ULEPSZONY ALGORYTM LOSUJĄCY Z DODATKOWYMI GRACZAMI I RÓŻNORODNOŚCIĄ
+function generateTeams() {
+  const activePlayers = playersData.filter(p => (p.attendance[selectedDate] || 'x') === 'y');
+  const targetPerTeam = parseInt(document.getElementById('gameModeSelect').value);
+  const totalRequired = targetPerTeam * 2;
 
-  const teamSize = Math.floor(active.length / 2);
-  let bestT1 = [], bestT2 = [], minDiff = Infinity;
+  if (activePlayers.length === 0) return alert("Brak obecnych graczy!");
 
-  for (let i = 0; i < 300; i++) {
-    const shuffled = [...active].sort(() => Math.random() - 0.5);
-    const t1 = shuffled.slice(0, teamSize);
-    const t2 = shuffled.slice(teamSize);
+  const avgRating = activePlayers.reduce((acc, p) => acc + p.currentRating, 0) / activePlayers.length;
+  let pool = activePlayers.map(p => ({ name: p.name, rating: p.currentRating }));
 
-    const sum1 = t1.reduce((acc, p) => acc + p.currentRating, 0);
-    const sum2 = t2.reduce((acc, p) => acc + p.currentRating, 0);
-    const diff = Math.abs(sum1 - sum2);
-
-    if (diff < minDiff) {
-      minDiff = diff;
-      bestT1 = t1;
-      bestT2 = t2;
+  // Dopełnianie "Dodatkowymi Graczymi"
+  const missingCount = totalRequired - pool.length;
+  if (missingCount > 0) {
+    for (let i = 1; i <= missingCount; i++) {
+      pool.push({ name: `Dodatkowy Gracz ${i}`, rating: parseFloat(avgRating.toFixed(2)) });
     }
   }
 
-  currentTeams = { t1: bestT1, t2: bestT2 };
+  let validCombinations = [];
+  let minDiff = Infinity;
 
-  const sum1 = bestT1.reduce((acc, p) => acc + p.currentRating, 0).toFixed(2);
-  const sum2 = bestT2.reduce((acc, p) => acc + p.currentRating, 0).toFixed(2);
+  for (let i = 0; i < 500; i++) {
+    const shuffled = [...pool].sort(() => Math.random() - 0.5);
+    const t1 = shuffled.slice(0, targetPerTeam);
+    const t2 = shuffled.slice(targetPerTeam);
+
+    const sum1 = t1.reduce((acc, p) => acc + p.rating, 0);
+    const sum2 = t2.reduce((acc, p) => acc + p.rating, 0);
+    const diff = Math.abs(sum1 - sum2);
+
+    if (diff < minDiff) minDiff = diff;
+
+    if (diff <= 1.5) {
+      validCombinations.push({ t1, t2, sum1, sum2 });
+    }
+  }
+
+  let selectedCombo;
+  if (validCombinations.length > 0) {
+    selectedCombo = validCombinations[Math.floor(Math.random() * validCombinations.length)];
+  } else {
+    selectedCombo = { t1: pool.slice(0, targetPerTeam), t2: pool.slice(targetPerTeam) };
+  }
+
+  currentTeams = { t1: selectedCombo.t1, t2: selectedCombo.t2 };
+
+  const sum1 = selectedCombo.t1.reduce((acc, p) => acc + p.rating, 0).toFixed(2);
+  const sum2 = selectedCombo.t2.reduce((acc, p) => acc + p.rating, 0).toFixed(2);
 
   document.getElementById('team1Box').innerHTML = `
-    <h3>Drużyna 1 (Siła: ${sum1})</h3>
-    <ul>${bestT1.map(p => `<li>${p.name} (${p.currentRating})</li>`).join('')}</ul>
+    <h3>Drużyna A (Siła: ${sum1})</h3>
+    <ul>${selectedCombo.t1.map(p => `<li>${p.name}</li>`).join('')}</ul>
   `;
   document.getElementById('team2Box').innerHTML = `
-    <h3>Drużyna 2 (Siła: ${sum2})</h3>
-    <ul>${bestT2.map(p => `<li>${p.name} (${p.currentRating})</li>`).join('')}</ul>
+    <h3>Drużyna B (Siła: ${sum2})</h3>
+    <ul>${selectedCombo.t2.map(p => `<li>${p.name}</li>`).join('')}</ul>
   `;
 
   document.getElementById('matchSection').style.display = 'block';
@@ -178,8 +260,26 @@ async function recordMatch(winnerTeam) {
   });
 
   document.getElementById('matchSection').style.display = 'none';
-  alert("Wynik meczu dla daty " + selectedDate + " został wysłany!");
+  alert("Wynik meczu został wysłany do Google Sheets!");
   setTimeout(loadData, 1500);
+}
+
+// PANELI ZARZĄDZANIA ZAWODNIKAMI
+function renderManagePlayers() {
+  const container = document.getElementById('managePlayersList');
+  container.innerHTML = '';
+
+  playersData.forEach(p => {
+    container.innerHTML += `
+      <div class="player-row">
+        <span><b>${p.name}</b> (Ocena bazowa: <b>${p.baseRating}</b> | Rating: ${p.currentRating})</span>
+        <div>
+          <button class="btn-blue" onclick="updateRatingPrompt('${p.name}', ${p.baseRating})">Zmień Ocenę</button>
+          <button class="btn-danger" onclick="deletePlayer('${p.name}')">Usuń</button>
+        </div>
+      </div>
+    `;
+  });
 }
 
 async function addPlayer() {
@@ -197,7 +297,56 @@ async function addPlayer() {
 
   document.getElementById('pName').value = '';
   document.getElementById('pRating').value = '';
-  setTimeout(loadData, 1500);
+  setTimeout(loadData, 1200);
+}
+
+async function deletePlayer(name) {
+  if (!confirm(`Czy na pewno chcesz usunąć gracza ${name}?`)) return;
+
+  await fetch(SCRIPT_URL, {
+    method: "POST",
+    mode: "no-cors",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "DELETE_PLAYER", name: name })
+  });
+
+  setTimeout(loadData, 1200);
+}
+
+async function updateRatingPrompt(name, currentBase) {
+  const newRating = prompt(`Ustaw nową ocenę bazową (1-10) dla ${name}:`, currentBase);
+  if (newRating === null || isNaN(parseFloat(newRating))) return;
+
+  await fetch(SCRIPT_URL, {
+    method: "POST",
+    mode: "no-cors",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "UPDATE_PLAYER_RATING", name: name, baseRating: parseFloat(newRating) })
+  });
+
+  setTimeout(loadData, 1200);
+}
+
+// PRZEGLĄD WYNIKÓW
+function renderHistoryTable() {
+  const thead = document.querySelector('#historyTable thead');
+  const tbody = document.querySelector('#historyTable tbody');
+
+  let headerRow = `<tr><th>Zawodnik</th>`;
+  availableDates.forEach(d => { headerRow += `<th>${d}</th>`; });
+  headerRow += `</tr>`;
+  thead.innerHTML = headerRow;
+
+  tbody.innerHTML = '';
+  playersData.forEach(p => {
+    let row = `<tr><td><b>${p.name}</b></td>`;
+    availableDates.forEach(d => {
+      const val = p.attendance[d] || '-';
+      row += `<td>${val}</td>`;
+    });
+    row += `</tr>`;
+    tbody.innerHTML += row;
+  });
 }
 
 loadData();

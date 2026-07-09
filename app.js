@@ -18,6 +18,8 @@ function switchTab(tabId, buttonEl) {
     openManagementTab();
   } else if (tabId === 'tab-history') {
     renderHistoryTable();
+  } else if (tabId === 'tab-main') {
+    render();
   }
 }
 
@@ -60,9 +62,11 @@ document.getElementById("admin-password-input")?.addEventListener("keyup", funct
   }
 });
 
-
 // --- POBIERANIE I OBSŁUGA DANYCH ---
 async function loadData() {
+  const listDiv = document.getElementById('playersList');
+  if (listDiv) listDiv.innerHTML = '<i>Ładowanie danych z Google Sheets...</i>';
+
   try {
     const response = await fetch(SCRIPT_URL);
     const result = await response.json();
@@ -76,6 +80,9 @@ async function loadData() {
 
     renderDates();
     render();
+    if (sessionStorage.getItem("isAdminAuthenticated") === "true") {
+      renderManagePlayers();
+    }
   } catch (err) {
     alert("Błąd podczas pobierania danych z Google Sheets!");
     console.error(err);
@@ -84,6 +91,7 @@ async function loadData() {
 
 function renderDates() {
   const select = document.getElementById('dateSelect');
+  if (!select) return;
   select.innerHTML = '';
   availableDates.forEach(d => {
     select.innerHTML += `<option value="${d}" ${d === selectedDate ? 'selected' : ''}>${d}</option>`;
@@ -119,6 +127,9 @@ async function onCalendarPick(dateVal) {
 }
 
 function togglePresence(idx) {
+  if (!playersData[idx].attendance) {
+    playersData[idx].attendance = {};
+  }
   const current = playersData[idx].attendance[selectedDate] || 'x';
   playersData[idx].attendance[selectedDate] = (current === 'y') ? 'x' : 'y';
   render();
@@ -127,7 +138,7 @@ function togglePresence(idx) {
 async function saveAttendance() {
   const map = {};
   playersData.forEach(p => {
-    map[p.name] = p.attendance[selectedDate] || 'x';
+    map[p.name] = (p.attendance && p.attendance[selectedDate]) ? p.attendance[selectedDate] : 'x';
   });
 
   await fetch(SCRIPT_URL, {
@@ -140,52 +151,60 @@ async function saveAttendance() {
   alert("Zapisano obecności na dzień " + selectedDate);
 }
 
-// Renderowanie Strony Główna (Ukryte oceny)
+// Renderowanie Strony Główny (Ukryte oceny)
 function render() {
   const listDiv = document.getElementById('playersList');
+  if (!listDiv) return;
+
   listDiv.innerHTML = '';
 
-  playersData.forEach((p, idx) => {
-    const status = p.attendance[selectedDate] || 'x';
-    const badgeClass = status === 'y' ? 'status-y' : 'status-x';
-    
-    listDiv.innerHTML += `
-      <div class="player-row">
-        <span><b>${p.name}</b></span>
-        <div>
-          <span class="${badgeClass}">${status.toUpperCase()}</span>
-          <button onclick="togglePresence(${idx})">Zmień Status</button>
+  if (playersData.length === 0) {
+    listDiv.innerHTML = '<p>Brak graczy w bazie. Przejdź do zakładki "Zarządzanie Zawodnikami", aby dodać pierwszych graczy.</p>';
+  } else {
+    playersData.forEach((p, idx) => {
+      const status = (p.attendance && p.attendance[selectedDate]) ? p.attendance[selectedDate] : 'x';
+      const badgeClass = status === 'y' ? 'status-y' : 'status-x';
+      
+      listDiv.innerHTML += `
+        <div class="player-row">
+          <span><b>${p.name}</b></span>
+          <div>
+            <span class="${badgeClass}">${status.toUpperCase()}</span>
+            <button onclick="togglePresence(${idx})">Zmień Status</button>
+          </div>
         </div>
-      </div>
-    `;
-  });
+      `;
+    });
+  }
 
   // Tabela Aktualna
   const tbody = document.querySelector('#rankTable tbody');
-  tbody.innerHTML = '';
-  const sorted = [...playersData].sort((a, b) => b.currentRating - a.currentRating);
+  if (tbody) {
+    tbody.innerHTML = '';
+    const sorted = [...playersData].sort((a, b) => b.currentRating - a.currentRating);
 
-  sorted.forEach((p, index) => {
-    tbody.innerHTML += `
-      <tr>
-        <td><b>${index + 1}</b></td>
-        <td><b>${p.name}</b></td>
-        <td>${p.wins}</td>
-        <td>${p.draws}</td>
-        <td>${p.losses}</td>
-        <td><strong>${p.currentRating}</strong></td>
-      </tr>
-    `;
-  });
+    sorted.forEach((p, index) => {
+      tbody.innerHTML += `
+        <tr>
+          <td><b>${index + 1}</b></td>
+          <td><b>${p.name}</b></td>
+          <td>${p.wins}</td>
+          <td>${p.draws}</td>
+          <td>${p.losses}</td>
+          <td><strong>${p.currentRating}</strong></td>
+        </tr>
+      `;
+    });
+  }
 }
 
-// ULEPSZONY ALGORYTM LOSUJĄCY Z DODATKOWYMI GRACZAMI I RÓŻNORODNOŚCIĄ
+// ALGORYTM LOSUJĄCY Z DODATKOWYMI GRACZAMI I RÓŻNORODNOŚCIĄ
 function generateTeams() {
-  const activePlayers = playersData.filter(p => (p.attendance[selectedDate] || 'x') === 'y');
+  const activePlayers = playersData.filter(p => (p.attendance && p.attendance[selectedDate] === 'y'));
   const targetPerTeam = parseInt(document.getElementById('gameModeSelect').value);
   const totalRequired = targetPerTeam * 2;
 
-  if (activePlayers.length === 0) return alert("Brak obecnych graczy!");
+  if (activePlayers.length === 0) return alert("Brak obecnych graczy (zaznaczonych jako Y)!");
 
   const avgRating = activePlayers.reduce((acc, p) => acc + p.currentRating, 0) / activePlayers.length;
   let pool = activePlayers.map(p => ({ name: p.name, rating: p.currentRating }));
@@ -264,9 +283,10 @@ async function recordMatch(winnerTeam) {
   setTimeout(loadData, 1500);
 }
 
-// PANELI ZARZĄDZANIA ZAWODNIKAMI
+// PANEL ZARZĄDZANIA ZAWODNIKAMI
 function renderManagePlayers() {
   const container = document.getElementById('managePlayersList');
+  if (!container) return;
   container.innerHTML = '';
 
   playersData.forEach(p => {
@@ -283,10 +303,15 @@ function renderManagePlayers() {
 }
 
 async function addPlayer() {
-  const name = document.getElementById('pName').value.trim();
-  const rating = parseFloat(document.getElementById('pRating').value);
+  const nameInput = document.getElementById('pName');
+  const ratingInput = document.getElementById('pRating');
 
-  if (!name || isNaN(rating)) return alert("Wprowadź imię i ocenę!");
+  const name = nameInput.value.trim();
+  const rating = parseFloat(ratingInput.value);
+
+  if (!name || isNaN(rating) || rating < 1 || rating > 10) {
+    return alert("Wprowadź imię i poprawną ocenę w przedziale od 1 do 10!");
+  }
 
   await fetch(SCRIPT_URL, {
     method: "POST",
@@ -295,9 +320,10 @@ async function addPlayer() {
     body: JSON.stringify({ action: "ADD_PLAYER", name: name, baseRating: rating })
   });
 
-  document.getElementById('pName').value = '';
-  document.getElementById('pRating').value = '';
-  setTimeout(loadData, 1200);
+  nameInput.value = '';
+  ratingInput.value = '';
+  alert(`Dodano zawodnika ${name}. Odświeżam dane...`);
+  setTimeout(loadData, 1500);
 }
 
 async function deletePlayer(name) {
@@ -310,7 +336,7 @@ async function deletePlayer(name) {
     body: JSON.stringify({ action: "DELETE_PLAYER", name: name })
   });
 
-  setTimeout(loadData, 1200);
+  setTimeout(loadData, 1500);
 }
 
 async function updateRatingPrompt(name, currentBase) {
@@ -324,13 +350,14 @@ async function updateRatingPrompt(name, currentBase) {
     body: JSON.stringify({ action: "UPDATE_PLAYER_RATING", name: name, baseRating: parseFloat(newRating) })
   });
 
-  setTimeout(loadData, 1200);
+  setTimeout(loadData, 1500);
 }
 
 // PRZEGLĄD WYNIKÓW
 function renderHistoryTable() {
   const thead = document.querySelector('#historyTable thead');
   const tbody = document.querySelector('#historyTable tbody');
+  if (!thead || !tbody) return;
 
   let headerRow = `<tr><th>Zawodnik</th>`;
   availableDates.forEach(d => { headerRow += `<th>${d}</th>`; });
@@ -341,7 +368,7 @@ function renderHistoryTable() {
   playersData.forEach(p => {
     let row = `<tr><td><b>${p.name}</b></td>`;
     availableDates.forEach(d => {
-      const val = p.attendance[d] || '-';
+      const val = (p.attendance && p.attendance[d]) ? p.attendance[d] : '-';
       row += `<td>${val}</td>`;
     });
     row += `</tr>`;
@@ -349,4 +376,5 @@ function renderHistoryTable() {
   });
 }
 
+// Inicjalne ładowanie
 loadData();

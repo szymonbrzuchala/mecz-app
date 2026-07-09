@@ -37,7 +37,7 @@
     /* Oznaczenia obecności */
     .status-y { background-color: #d4edda; color: #155724; font-weight: bold; padding: 4px 8px; border-radius: 4px; }
     .status-x { background-color: #f8d7da; color: #721c24; font-weight: bold; padding: 4px 8px; border-radius: 4px; }
-    .player-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }
+    .player-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; }
   </style>
 </head>
 <body>
@@ -59,7 +59,7 @@
       <input type="date" id="calendarPicker" onchange="onCalendarPick(this.value)">
       <br><br>
       <label><b>Tryb Gry:</b></label>
-      <select id="gameModeSelect" onchange="render()">
+      <select id="gameModeSelect">
         <option value="6">Gramy po 6 osób (12 zawodników)</option>
         <option value="5">Gramy po 5 osób (10 zawodników)</option>
       </select>
@@ -141,7 +141,7 @@
   <div id="tab-history" class="tab-content">
     <section class="card">
       <h2>📊 Przegląd Wyników i Obecności w Kalendarzu</h2>
-      <p>Poniższa tabela przedstawia historie obecności i punkty zdobyte w poszczególnych terminach:</p>
+      <p>Poniższa tabela przedstawia historię obecności i punkty zdobyte w poszczególnych terminach:</p>
       <div style="overflow-x: auto;">
         <table id="historyTable">
           <thead></thead>

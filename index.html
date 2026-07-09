@@ -3,65 +3,65 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>System Losowania Drużyn i Rozgrywek</title>
+  <title>System Losowania Drużyn</title>
   <style>
     * { box-sizing: border-box; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 10px; background-color: #f4f6f8; color: #333; font-size: 14px; }
-    h1 { font-size: 1.4rem; margin: 5px 0 15px 0; color: #1a252f; text-align: center; }
-    h2 { font-size: 1.1rem; margin-top: 0; margin-bottom: 10px; color: #007bff; border-bottom: 1px solid #eee; padding-bottom: 5px; }
-    h3 { font-size: 1rem; margin: 5px 0 10px 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 8px; background-color: #f4f6f8; color: #333; font-size: 13px; }
+    h1 { font-size: 1.2rem; margin: 4px 0 10px 0; color: #1a252f; text-align: center; }
+    h2 { font-size: 1rem; margin-top: 0; margin-bottom: 8px; color: #007bff; border-bottom: 1px solid #eee; padding-bottom: 4px; }
+    h3 { font-size: 0.95rem; margin: 4px 0; }
 
     /* Menu Zakładek */
-    .nav-tabs { display: flex; background: #fff; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 15px; overflow: hidden; }
-    .nav-tab { flex: 1; padding: 10px 5px; text-align: center; background: #fff; border: none; font-size: 13px; font-weight: 600; cursor: pointer; transition: 0.2s; color: #555; border-bottom: 2px solid transparent; }
+    .nav-tabs { display: flex; background: #fff; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 10px; overflow: hidden; }
+    .nav-tab { flex: 1; padding: 8px 4px; text-align: center; background: #fff; border: none; font-size: 12px; font-weight: 600; cursor: pointer; transition: 0.2s; color: #555; border-bottom: 2px solid transparent; }
     .nav-tab.active { background: #eef5ff; color: #007bff; border-bottom: 2px solid #007bff; }
 
     .tab-content { display: none; }
     .tab-content.active { display: block; }
 
     /* Karty */
-    .card { background: white; padding: 12px; border-radius: 8px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+    .card { background: white; padding: 10px; border-radius: 6px; margin-bottom: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
     
-    /* Formularze i Przyciski */
-    label { font-size: 13px; font-weight: 600; }
-    input, select { padding: 6px 8px; margin: 3px 0; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; width: 100%; max-width: 100%; }
-    .inline-field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px; }
+    /* Formularze */
+    label { font-size: 12px; font-weight: 600; }
+    input, select { padding: 5px 7px; margin: 2px 0; border: 1px solid #ccc; border-radius: 4px; font-size: 12px; width: 100%; max-width: 100%; }
+    .inline-field { display: flex; flex-direction: column; gap: 3px; margin-bottom: 6px; }
 
-    button { background-color: #28a745; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 600; margin: 3px 0; width: 100%; transition: 0.2s; }
+    /* Przyciski */
+    button { background-color: #28a745; color: white; border: none; padding: 7px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 600; margin: 2px 0; width: 100%; transition: 0.2s; }
     button:active { opacity: 0.8; }
     .btn-blue { background-color: #007bff; }
     .btn-danger { background-color: #dc3545; }
-    .btn-small { padding: 4px 8px; font-size: 12px; width: auto; margin: 0; }
+    .btn-small { padding: 3px 6px; font-size: 11px; width: auto; margin: 0; }
     
-    /* Kompaktowa lista zawodników (linijka po linijce) */
-    .player-row { display: flex; align-items: center; justify-content: space-between; padding: 6px 4px; border-bottom: 1px solid #f0f0f0; font-size: 13px; }
+    /* Kompaktowa lista zawodników (Super-Ciasny Układ) */
+    .player-row { display: flex; align-items: center; justify-content: space-between; padding: 3px 2px; border-bottom: 1px solid #f2f2f2; font-size: 12.5px; }
     .player-row:last-child { border-bottom: none; }
-    .player-info { font-weight: 500; }
-    .player-actions { display: flex; align-items: center; gap: 8px; }
+    .player-name { font-weight: 500; }
 
-    /* Oznaczenia obecności */
-    .status-badge { font-size: 11px; font-weight: bold; padding: 2px 6px; border-radius: 3px; min-width: 20px; text-align: center; display: inline-block; }
-    .status-y { background-color: #d4edda; color: #155724; }
-    .status-x { background-color: #f8d7da; color: #721c24; }
+    /* Dedykowane Przyciski Statusu Obecności */
+    .btn-status { width: 32px; height: 26px; padding: 0; font-size: 12px; font-weight: bold; border-radius: 4px; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+    .btn-status-y { background-color: #28a745; color: white; }
+    .btn-status-x { background-color: #dc3545; color: white; }
 
     /* Tabele */
-    .table-container { overflow-x: auto; -webkit-overflow-scrolling: touch; margin-top: 8px; }
-    table { width: 100%; border-collapse: collapse; font-size: 12px; white-space: nowrap; }
-    th, td { border: 1px solid #e0e0e0; padding: 6px 8px; text-align: center; }
+    .table-container { overflow-x: auto; -webkit-overflow-scrolling: touch; margin-top: 5px; }
+    table { width: 100%; border-collapse: collapse; font-size: 11.5px; white-space: nowrap; }
+    th, td { border: 1px solid #e0e0e0; padding: 4px 6px; text-align: center; }
     th { background-color: #f8f9fa; color: #333; font-weight: 600; }
 
     /* Wylosowane Składy */
-    .teams-grid { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
-    .team-box { background: #f8f9fa; padding: 10px; border-radius: 6px; border: 1px solid #e9ecef; }
-    .team-box ul { margin: 5px 0 0 0; padding-left: 20px; font-size: 13px; }
-    .team-box li { padding: 2px 0; }
+    .teams-grid { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+    .team-box { background: #f8f9fa; padding: 8px; border-radius: 5px; border: 1px solid #e9ecef; }
+    .team-box ul { margin: 4px 0 0 0; padding-left: 18px; font-size: 12px; }
+    .team-box li { padding: 1px 0; }
     
-    .match-buttons-row { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
-    .match-btn { padding: 10px; font-size: 13px; margin: 0; }
+    .match-buttons-row { display: flex; flex-direction: column; gap: 5px; margin-top: 10px; }
+    .match-btn { padding: 9px; font-size: 12px; margin: 0; }
 
-    /* Responsywność dla Ekranów Komputerowych (Desktop) */
+    /* Desktop Adjustments */
     @media (min-width: 600px) {
-      body { max-width: 800px; margin: 0 auto; padding: 20px; }
+      body { max-width: 750px; margin: 0 auto; padding: 15px; }
       .inline-field { flex-direction: row; align-items: center; justify-content: space-between; }
       input, select { width: auto; }
       button { width: auto; }
@@ -89,7 +89,7 @@
         <select id="dateSelect" onchange="onDateChange()"></select>
       </div>
       <div class="inline-field">
-        <label>Lub wybierz z kalendarza:</label>
+        <label>Kalendarz:</label>
         <input type="date" id="calendarPicker" onchange="onCalendarPick(this.value)">
       </div>
       <div class="inline-field">
@@ -102,9 +102,9 @@
     </section>
 
     <section class="card">
-      <h2>📋 Obecność na dzień: <span id="selectedDateTitle" style="color:#333;">-</span></h2>
+      <h2>📋 Lista Obecności: <span id="selectedDateTitle" style="color:#333;">-</span></h2>
       <div id="playersList">Ładowanie danych...</div>
-      <div style="margin-top: 10px; display: flex; gap: 6px;">
+      <div style="margin-top: 8px; display: flex; gap: 5px;">
         <button onclick="saveAttendance()" style="flex: 1;">💾 Zapisz</button>
         <button class="btn-blue" onclick="generateTeams()" style="flex: 1;">🎲 Losuj</button>
       </div>
@@ -117,7 +117,7 @@
         <div id="team2Box" class="team-box"></div>
       </div>
       
-      <h3 style="margin-top: 15px;">Wpisz Wynik Meczu:</h3>
+      <h3 style="margin-top: 10px;">Wynik Meczu:</h3>
       <div class="match-buttons-row">
         <button class="match-btn btn-blue" onclick="recordMatch(1)">👈 Wygrana A</button>
         <button class="match-btn" style="background-color: #6c757d;" onclick="recordMatch(0)">🤝 Remis</button>
@@ -147,12 +147,12 @@
 
   <div id="tab-players" class="tab-content">
     
-    <div id="auth-container" class="card" style="max-width: 320px; margin: 20px auto; text-align: center;">
-      <h3>🔒 Dostęp zablokowany</h3>
-      <p style="font-size: 12px; color: #666;">Podaj hasło do panelu zarządzania:</p>
-      <input type="password" id="admin-password-input" placeholder="Wpisz hasło..." style="margin-bottom: 8px;">
+    <div id="auth-container" class="card" style="max-width: 300px; margin: 15px auto; text-align: center;">
+      <h3>🔒 Logowanie</h3>
+      <p style="font-size: 11px; color: #666; margin: 4px 0 8px 0;">Podaj hasło administratora:</p>
+      <input type="password" id="admin-password-input" placeholder="Hasło..." style="margin-bottom: 6px;">
       <button onclick="checkAdminPassword()">Zaloguj</button>
-      <p id="auth-error" style="color: red; display: none; margin-top: 8px; font-size: 12px;">Nieprawidłowe hasło!</p>
+      <p id="auth-error" style="color: red; display: none; margin-top: 6px; font-size: 11px;">Błędne hasło!</p>
     </div>
 
     <div id="management-content" style="display: none;">
@@ -163,15 +163,15 @@
 
       <section class="card">
         <h2>➕ Dodaj Zawodnika</h2>
-        <div style="display: flex; flex-direction: column; gap: 6px;">
+        <div style="display: flex; flex-direction: column; gap: 4px;">
           <input type="text" id="pName" placeholder="Imię i Nazwisko">
-          <input type="number" id="pRating" placeholder="Ocena bazowa (1-10)" min="1" max="10" step="0.5">
-          <button onclick="addPlayer()">Dodaj do Bazy</button>
+          <input type="number" id="pRating" placeholder="Ocena (1-10)" min="1" max="10" step="0.5">
+          <button onclick="addPlayer()">Dodaj</button>
         </div>
       </section>
 
       <section class="card">
-        <h2>⚙️ Edycja Graczy</h2>
+        <h2>⚙️ Lista Zawodników</h2>
         <div id="managePlayersList"></div>
       </section>
     </div>

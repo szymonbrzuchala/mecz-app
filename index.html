@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>System Losowania Drużyn i Tabela</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f6f9; color: #333; }
+    .card { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    button { background-color: #28a745; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; font-size: 14px; }
+    button:hover { background-color: #218838; }
+    input { padding: 8px; margin-right: 10px; border: 1px solid #ccc; border-radius: 4px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+    th { background-color: #007bff; color: white; }
+    .teams-grid { display: flex; gap: 20px; margin-top: 15px; }
+    .team-box { flex: 1; background: #e9ecef; padding: 15px; border-radius: 6px; }
+  </style>
+</head>
+<body>
+
+  <h1>⚽ System Losowania i Tabela Wyników</h1>
+
+  <section class="card">
+    <h2>➕ Dodaj Zawodnika do Bazy</h2>
+    <input type="text" id="pName" placeholder="Imię i Nazwisko">
+    <input type="number" id="pRating" placeholder="Ocena 1-10" min="1" max="10" step="0.5">
+    <button onclick="addPlayer()">Dodaj do Google Sheets</button>
+  </section>
+
+  <section class="card">
+    <h2>📋 Wybierz Obecnych na Mecz</h2>
+    <div id="playersList">Ładowanie graczy z Google Sheets...</div>
+    <br>
+    <button onclick="generateBalancedTeams()">🎲 Losuj Drużyny</button>
+  </section>
+
+  <section class="card" id="matchSection" style="display:none;">
+    <h2>⚖️ Wylosowane Składy</h2>
+    <div class="teams-grid">
+      <div id="team1Box" class="team-box"></div>
+      <div id="team2Box" class="team-box"></div>
+    </div>
+    <br>
+    <h3>Wpisz Wynik Meczu:</h3>
+    <button onclick="recordMatch(1)">Wygrała Drużyna 1 (+0.3 pkt)</button>
+    <button onclick="recordMatch(0)">Remis (+0.1 pkt)</button>
+    <button onclick="recordMatch(2)">Wygrała Drużyna 2 (+0.3 pkt)</button>
+  </section>
+
+  <section class="card">
+    <h2>🏆 Tabela Ligowa (Google Sheets)</h2>
+    <table id="rankTable">
+      <thead>
+        <tr>
+          <th>Gracz</th>
+          <th>Ocena Bazy (1-10)</th>
+          <th>Wygrane (W)</th>
+          <th>Remisy (D)</th>
+          <th>Porażki (L)</th>
+          <th>Aktualny Rating</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </section>
+
+  <script src="app.js"></script>
+</body>
+</html>

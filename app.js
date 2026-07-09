@@ -8,7 +8,7 @@ let selectedDate = "";
 let currentTeams = null;
 
 // ==========================================
-// 1. NAWIGACJA, HASŁO I OBSŁUGA ZAKŁADEK
+// 1. ZAKŁADKI I HASŁO
 // ==========================================
 
 function switchTab(tabId, buttonEl) {
@@ -61,14 +61,11 @@ function logoutAdmin() {
 }
 
 document.getElementById("admin-password-input")?.addEventListener("keyup", function(event) {
-  if (event.key === "Enter") {
-    checkAdminPassword();
-  }
+  if (event.key === "Enter") checkAdminPassword();
 });
 
-
 // ==========================================
-// 2. ODCZYT I ZAPIS DANYCH GOOGLE SHEETS
+// 2. LOGIKA GOOGLE SHEETS
 // ==========================================
 
 async function loadData() {
@@ -92,7 +89,7 @@ async function loadData() {
       renderManagePlayers();
     }
   } catch (err) {
-    alert("Błąd podczas pobierania danych z Google Sheets!");
+    alert("Błąd połączenia z Google Sheets!");
     console.error(err);
   }
 }
@@ -139,10 +136,9 @@ async function onCalendarPick(dateVal) {
   }
 }
 
+// Przełącznik statusu obecności (Y/X)
 function togglePresence(idx) {
-  if (!playersData[idx].attendance) {
-    playersData[idx].attendance = {};
-  }
+  if (!playersData[idx].attendance) playersData[idx].attendance = {};
   const current = playersData[idx].attendance[selectedDate] || 'x';
   playersData[idx].attendance[selectedDate] = (current === 'y') ? 'x' : 'y';
   render();
@@ -161,12 +157,11 @@ async function saveAttendance() {
     body: JSON.stringify({ action: "UPDATE_ATTENDANCE", dateStr: selectedDate, attendanceMap: map })
   });
 
-  alert("Zapisano obecności dla daty: " + selectedDate);
+  alert("Zapisano obecności!");
 }
 
-
 // ==========================================
-// 3. WIDOK STRONY GŁÓWNEJ (UKRYTE OCENY)
+// 3. RENDEROWANIE STRONY GŁÓWNEJ (KOMPAKTOWE)
 // ==========================================
 
 function render() {
@@ -176,19 +171,18 @@ function render() {
   listDiv.innerHTML = '';
 
   if (playersData.length === 0) {
-    listDiv.innerHTML = '<p>Brak graczy w bazie. Przejdź do zakładki "Zarządzanie Zawodnikami", aby dodać pierwszych graczy.</p>';
+    listDiv.innerHTML = '<p>Brak graczy w bazie.</p>';
   } else {
     playersData.forEach((p, idx) => {
       const status = (p.attendance && p.attendance[selectedDate]) ? p.attendance[selectedDate] : 'x';
-      const badgeClass = status === 'y' ? 'status-y' : 'status-x';
+      const isPresent = status === 'y';
+      const btnClass = isPresent ? 'btn-status-y' : 'btn-status-x';
+      const statusText = isPresent ? 'Y' : 'X';
       
       listDiv.innerHTML += `
         <div class="player-row">
-          <span><b>${p.name}</b></span>
-          <div>
-            <span class="${badgeClass}">${status.toUpperCase()}</span>
-            <button onclick="togglePresence(${idx})">Zmień Status</button>
-          </div>
+          <span class="player-name">${p.name}</span>
+          <button class="btn-status ${btnClass}" onclick="togglePresence(${idx})">${statusText}</button>
         </div>
       `;
     });
@@ -204,7 +198,7 @@ function render() {
       tbody.innerHTML += `
         <tr>
           <td><b>${index + 1}</b></td>
-          <td><b>${p.name}</b></td>
+          <td style="text-align: left;"><b>${p.name}</b></td>
           <td>${p.wins}</td>
           <td>${p.draws}</td>
           <td>${p.losses}</td>
@@ -215,9 +209,8 @@ function render() {
   }
 }
 
-
 // ==========================================
-// 4. ADVANCED TEAM GENERATOR (5v5 / 6v6)
+// 4. GENERATOR SKŁADÓW (5v5 / 6v6)
 // ==========================================
 
 function generateTeams() {
@@ -226,12 +219,11 @@ function generateTeams() {
   const targetPerTeam = modeSelect ? parseInt(modeSelect.value) : 6;
   const totalRequired = targetPerTeam * 2;
 
-  if (activePlayers.length === 0) return alert("Brak obecnych graczy (zaznaczonych jako Y)!");
+  if (activePlayers.length === 0) return alert("Brak graczy zaznaczonych na Y!");
 
   const avgRating = activePlayers.reduce((acc, p) => acc + p.currentRating, 0) / activePlayers.length;
   let pool = activePlayers.map(p => ({ name: p.name, rating: p.currentRating }));
 
-  // Automatyczne dodawanie "Dodatkowego Gracza" jeśli brakuje do pełnego składu
   const missingCount = totalRequired - pool.length;
   if (missingCount > 0) {
     for (let i = 1; i <= missingCount; i++) {
@@ -275,14 +267,14 @@ function generateTeams() {
 
   if (t1Box) {
     t1Box.innerHTML = `
-      <h3>Drużyna A (Siła: ${sum1})</h3>
+      <h3>Drużyna A (${sum1})</h3>
       <ul>${selectedCombo.t1.map(p => `<li>${p.name}</li>`).join('')}</ul>
     `;
   }
 
   if (t2Box) {
     t2Box.innerHTML = `
-      <h3>Drużyna B (Siła: ${sum2})</h3>
+      <h3>Drużyna B (${sum2})</h3>
       <ul>${selectedCombo.t2.map(p => `<li>${p.name}</li>`).join('')}</ul>
     `;
   }
@@ -312,13 +304,12 @@ async function recordMatch(winnerTeam) {
   const matchSection = document.getElementById('matchSection');
   if (matchSection) matchSection.style.display = 'none';
 
-  alert("Wynik meczu został wysłany do Google Sheets!");
+  alert("Wynik meczu został wysłany!");
   setTimeout(loadData, 1500);
 }
 
-
 // ==========================================
-// 5. PANELI ZARZĄDZANIA ZAWODNIKAMI
+// 5. ZARZĄDZANIE GRACZAMI
 // ==========================================
 
 function renderManagePlayers() {
@@ -329,10 +320,10 @@ function renderManagePlayers() {
   playersData.forEach(p => {
     container.innerHTML += `
       <div class="player-row">
-        <span><b>${p.name}</b> (Ocena bazowa: <b>${p.baseRating}</b> | Rating: ${p.currentRating})</span>
-        <div>
-          <button class="btn-blue" onclick="updateRatingPrompt('${p.name}', ${p.baseRating})">Zmień Ocenę</button>
-          <button class="btn-danger" onclick="deletePlayer('${p.name}')">Usuń</button>
+        <span><b>${p.name}</b> (${p.baseRating})</span>
+        <div style="display: flex; gap: 4px;">
+          <button class="btn-blue btn-small" onclick="updateRatingPrompt('${p.name}', ${p.baseRating})">Edytuj</button>
+          <button class="btn-danger btn-small" onclick="deletePlayer('${p.name}')">Usuń</button>
         </div>
       </div>
     `;
@@ -349,7 +340,7 @@ async function addPlayer() {
   const rating = parseFloat(ratingInput.value);
 
   if (!name || isNaN(rating) || rating < 1 || rating > 10) {
-    return alert("Wprowadź imię i poprawną ocenę w przedziale od 1 do 10!");
+    return alert("Wprowadź imię i ocenę 1-10!");
   }
 
   await fetch(SCRIPT_URL, {
@@ -361,12 +352,12 @@ async function addPlayer() {
 
   nameInput.value = '';
   ratingInput.value = '';
-  alert(`Dodano zawodnika ${name}. Odświeżam dane...`);
+  alert(`Dodano zawodnika ${name}.`);
   setTimeout(loadData, 1500);
 }
 
 async function deletePlayer(name) {
-  if (!confirm(`Czy na pewno chcesz usunąć gracza ${name}?`)) return;
+  if (!confirm(`Usunąć ${name}?`)) return;
 
   await fetch(SCRIPT_URL, {
     method: "POST",
@@ -379,7 +370,7 @@ async function deletePlayer(name) {
 }
 
 async function updateRatingPrompt(name, currentBase) {
-  const newRating = prompt(`Ustaw nową ocenę bazową (1-10) dla ${name}:`, currentBase);
+  const newRating = prompt(`Nowa ocena (1-10) dla ${name}:`, currentBase);
   if (newRating === null || isNaN(parseFloat(newRating))) return;
 
   await fetch(SCRIPT_URL, {
@@ -392,9 +383,8 @@ async function updateRatingPrompt(name, currentBase) {
   setTimeout(loadData, 1500);
 }
 
-
 // ==========================================
-// 6. PRZEGLĄD WYNIKÓW W KALENDARZU
+// 6. PRZEGLĄD WYNIKÓW
 // ==========================================
 
 function renderHistoryTable() {
@@ -409,7 +399,7 @@ function renderHistoryTable() {
 
   tbody.innerHTML = '';
   playersData.forEach(p => {
-    let row = `<tr><td><b>${p.name}</b></td>`;
+    let row = `<tr><td style="text-align:left;"><b>${p.name}</b></td>`;
     availableDates.forEach(d => {
       const val = (p.attendance && p.attendance[d]) ? p.attendance[d] : '-';
       row += `<td>${val}</td>`;
@@ -419,5 +409,5 @@ function renderHistoryTable() {
   });
 }
 
-// Start aplikacji przy załadowaniu pliku
+// Inicjalne pobranie danych
 loadData();

@@ -1,11 +1,30 @@
-// Identyfikator wdrożenia Apps Script
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyMoaL2KqM2UJ3tMS-fO8CwM4_01sJ4fBZuIP3h8LEmwaMfHRHux9Px2-KqsF3egbzx/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzEN1E0zT7WVGnBAybKPF1KYz8L0S8meaBiJ4htFX8GbsbCsx4BV8VCMIyqPVjdHWmnyQ/exec";
 const ADMIN_PASSWORD = "pilkanozna";
 
 let playersData = [];
 let availableDates = [];
+let teamsByDate = {};
 let selectedDate = "";
 let currentTeams = null;
+
+// Helper do wyznaczania najbliższego poniedziałku
+function getNextMondayString() {
+  const d = new Date();
+  const day = d.getDay();
+  const diff = d.getDate() + (day === 0 ? 1 : (day === 1 ? 0 : 8 - day));
+  const monday = new Date(d.setDate(diff));
+  return monday.toISOString().split('T')[0];
+}
+
+// Funkcja pomocnicza do sortowania graczy alfabetycznie po Nazwisku
+function sortPlayersByLastName(list) {
+  return [...list].sort((a, b) => {
+    const lastNameA = a.name.trim().split(' ').slice(-1)[0].toLowerCase();
+    const lastNameB = b.name.trim().split(' ').slice(-1)[0].toLowerCase();
+    if (lastNameA !== lastNameB) return lastNameA.localeCompare(lastNameB, 'pl');
+    return a.name.localeCompare(b.name, 'pl');
+  });
+}
 
 // ==========================================
 // 1. ZAKŁADKI I HASŁO
@@ -78,9 +97,16 @@ async function loadData() {
     
     playersData = result.players || [];
     availableDates = result.dates || [];
+    teamsByDate = result.teamsByDate || {};
 
     if (availableDates.length > 0 && !selectedDate) {
       selectedDate = availableDates[availableDates.length - 1];
+    }
+
+    // Ustawianie domyślnej daty w kalendarzu na najbliższy poniedziałek
+    const picker = document.getElementById('calendarPicker');
+    if (picker && !picker.value) {
+      picker.value = getNextMondayString();
     }
 
     renderDates();
@@ -136,12 +162,17 @@ async function onCalendarPick(dateVal) {
   }
 }
 
-// Przełącznik statusu obecności (Y/X)
-function togglePresence(idx) {
-  if (!playersData[idx].attendance) playersData[idx].attendance = {};
-  const current = playersData[idx].attendance[selectedDate] || 'x';
-  playersData[idx].attendance[selectedDate] = (current === 'y') ? 'x' : 'y';
-  render();
+function togglePresence(idxInSorted) {
+  const sortedPlayers = sortPlayersByLastName(playersData);
+  const targetPlayer = sortedPlayers[idxInSorted];
+  const realIdx = playersData.findIndex(p => p.name === targetPlayer.name);
+
+  if (realIdx !== -1) {
+    if (!playersData[realIdx].attendance) playersData[realIdx].attendance = {};
+    const current = playersData[realIdx].attendance[selectedDate] || 'x';
+    playersData[realIdx].attendance[selectedDate] = (current === 'y') ? 'x' : 'y';
+    render();
+  }
 }
 
 async function saveAttendance() {
@@ -161,7 +192,7 @@ async function saveAttendance() {
 }
 
 // ==========================================
-// 3. RENDEROWANIE STRONY GŁÓWNEJ (KOMPAKTOWE)
+// 3. RENDEROWANIE STRONY GŁÓWNEJ
 // ==========================================
 
 function render() {
@@ -173,7 +204,9 @@ function render() {
   if (playersData.length === 0) {
     listDiv.innerHTML = '<p>Brak graczy w bazie.</p>';
   } else {
-    playersData.forEach((p, idx) => {
+    const sortedAlphabetically = sortPlayersByLastName(playersData);
+
+    sortedAlphabetically.forEach((p, idx) => {
       const status = (p.attendance && p.attendance[selectedDate]) ? p.attendance[selectedDate] : 'x';
       const isPresent = status === 'y';
       const btnClass = isPresent ? 'btn-status-y' : 'btn-status-x';
@@ -188,24 +221,65 @@ function render() {
     });
   }
 
-  // Tabela Aktualna / Rankingowa
+  // Odczyt i wyświetlanie wylosowanych drużyn dla wybranej daty
+  const matchSection = document.getElementById('matchSection');
+  if (teamsByDate[selectedDate] && teamsByDate[selectedDate].t1 && teamsByDate[selectedDate].t1.length > 0) {
+    currentTeams = teamsByDate[selectedDate];
+    displayTeams(currentTeams.t1, currentTeams.t2);
+    if (matchSection) matchSection.style.display = 'block';
+  } else {
+    currentTeams = null;
+    if (matchSection) matchSection.style.display = 'none';
+  }
+
+  // Tabela Ligowa (Sortowana po Punktach)
   const tbody = document.querySelector('#rankTable tbody');
   if (tbody) {
     tbody.innerHTML = '';
-    const sorted = [...playersData].sort((a, b) => b.currentRating - a.currentRating);
+    
+    // Punkty = Wygrane * 3 + Remisy * 1
+    const sortedByPoints = [...playersData].sort((a, b) => {
+      const pointsA = (a.wins * 3) + (a.draws * 1);
+      const pointsB = (b.wins * 3) + (b.draws * 1);
+      if (pointsB !== pointsA) return pointsB - pointsA;
+      return b.wins - a.wins; // W przypadku remisu punktowego decydują wygrane
+    });
 
-    sorted.forEach((p, index) => {
+    sortedByPoints.forEach((p, index) => {
+      const points = (p.wins * 3) + (p.draws * 1);
       tbody.innerHTML += `
         <tr>
           <td><b>${index + 1}</b></td>
           <td style="text-align: left;"><b>${p.name}</b></td>
+          <td><strong>${points}</strong></td>
           <td>${p.wins}</td>
           <td>${p.draws}</td>
           <td>${p.losses}</td>
-          <td><strong>${p.currentRating}</strong></td>
         </tr>
       `;
     });
+  }
+}
+
+function displayTeams(t1, t2) {
+  const sum1 = t1.reduce((acc, p) => acc + (p.rating || p.currentRating || 0), 0).toFixed(2);
+  const sum2 = t2.reduce((acc, p) => acc + (p.rating || p.currentRating || 0), 0).toFixed(2);
+
+  const t1Box = document.getElementById('team1Box');
+  const t2Box = document.getElementById('team2Box');
+
+  if (t1Box) {
+    t1Box.innerHTML = `
+      <h3>Drużyna A (${sum1})</h3>
+      <ul>${t1.map(p => `<li>${p.name}</li>`).join('')}</ul>
+    `;
+  }
+
+  if (t2Box) {
+    t2Box.innerHTML = `
+      <h3>Drużyna B (${sum2})</h3>
+      <ul>${t2.map(p => `<li>${p.name}</li>`).join('')}</ul>
+    `;
   }
 }
 
@@ -213,7 +287,7 @@ function render() {
 // 4. GENERATOR SKŁADÓW (5v5 / 6v6)
 // ==========================================
 
-function generateTeams() {
+async function generateTeams() {
   const activePlayers = playersData.filter(p => (p.attendance && p.attendance[selectedDate] === 'y'));
   const modeSelect = document.getElementById('gameModeSelect');
   const targetPerTeam = modeSelect ? parseInt(modeSelect.value) : 6;
@@ -258,33 +332,24 @@ function generateTeams() {
   }
 
   currentTeams = { t1: selectedCombo.t1, t2: selectedCombo.t2 };
+  teamsByDate[selectedDate] = currentTeams;
 
-  const sum1 = selectedCombo.t1.reduce((acc, p) => acc + p.rating, 0).toFixed(2);
-  const sum2 = selectedCombo.t2.reduce((acc, p) => acc + p.rating, 0).toFixed(2);
-
-  const t1Box = document.getElementById('team1Box');
-  const t2Box = document.getElementById('team2Box');
-
-  if (t1Box) {
-    t1Box.innerHTML = `
-      <h3>Drużyna A (${sum1})</h3>
-      <ul>${selectedCombo.t1.map(p => `<li>${p.name}</li>`).join('')}</ul>
-    `;
-  }
-
-  if (t2Box) {
-    t2Box.innerHTML = `
-      <h3>Drużyna B (${sum2})</h3>
-      <ul>${selectedCombo.t2.map(p => `<li>${p.name}</li>`).join('')}</ul>
-    `;
-  }
+  displayTeams(currentTeams.t1, currentTeams.t2);
 
   const matchSection = document.getElementById('matchSection');
   if (matchSection) matchSection.style.display = 'block';
+
+  // Zapis wylosowanych drużyn w Google Sheets dla wybranego dnia
+  await fetch(SCRIPT_URL, {
+    method: "POST",
+    mode: "no-cors",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "SAVE_TEAMS", dateStr: selectedDate, t1: currentTeams.t1, t2: currentTeams.t2 })
+  });
 }
 
 async function recordMatch(winnerTeam) {
-  if (!currentTeams) return;
+  if (!currentTeams) return alert("Brak drużyn dla tego dnia!");
 
   const payload = {
     action: "RECORD_MATCH",
@@ -301,10 +366,7 @@ async function recordMatch(winnerTeam) {
     body: JSON.stringify(payload)
   });
 
-  const matchSection = document.getElementById('matchSection');
-  if (matchSection) matchSection.style.display = 'none';
-
-  alert("Wynik meczu został wysłany!");
+  alert("Wynik meczu został zapisany!");
   setTimeout(loadData, 1500);
 }
 
@@ -317,10 +379,13 @@ function renderManagePlayers() {
   if (!container) return;
   container.innerHTML = '';
 
-  playersData.forEach(p => {
+  const sortedAlphabetically = sortPlayersByLastName(playersData);
+
+  sortedAlphabetically.forEach(p => {
+    const points = (p.wins * 3) + (p.draws * 1);
     container.innerHTML += `
       <div class="player-row">
-        <span><b>${p.name}</b> (${p.baseRating})</span>
+        <span><b>${p.name}</b> (Baza: <b>${p.baseRating}</b> | Rating: <b>${p.currentRating}</b> | Pkt: <b>${points}</b>)</span>
         <div style="display: flex; gap: 4px;">
           <button class="btn-blue btn-small" onclick="updateRatingPrompt('${p.name}', ${p.baseRating})">Edytuj</button>
           <button class="btn-danger btn-small" onclick="deletePlayer('${p.name}')">Usuń</button>
@@ -398,7 +463,9 @@ function renderHistoryTable() {
   thead.innerHTML = headerRow;
 
   tbody.innerHTML = '';
-  playersData.forEach(p => {
+  const sortedAlphabetically = sortPlayersByLastName(playersData);
+
+  sortedAlphabetically.forEach(p => {
     let row = `<tr><td style="text-align:left;"><b>${p.name}</b></td>`;
     availableDates.forEach(d => {
       const val = (p.attendance && p.attendance[d]) ? p.attendance[d] : '-';
@@ -409,5 +476,5 @@ function renderHistoryTable() {
   });
 }
 
-// Inicjalne pobranie danych
+// Inicjalne ładowanie danych
 loadData();

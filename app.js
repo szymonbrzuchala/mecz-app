@@ -1,4 +1,4 @@
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzgnPrlizHJdBl1cPxmFKJAHkXKbXBTkbWlxtByM46UeccX2kCJV3G-qI9AhZjO9WnN/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxuW_2l098RaHde92ZTa6PlXkZaAqTC2yFftM9HK1Go7Fd04Tk6OggDkfxDmGvEm6cxuQ/exec";
 const ADMIN_PASSWORD = "pilkanozna";
 
 let playersData = [];
@@ -17,7 +17,7 @@ function getNextMondayString() {
   return monday.toISOString().split('T')[0];
 }
 
-// Alfabetyczne sortowanie po Nazwisku (ostatni wyraz z ciągu tekstowego)
+// Alfabetyczne sortowanie po Nazwisku (ostatnie słowo w imieniu i nazwisku)
 function sortPlayersByLastName(list) {
   return [...list].sort((a, b) => {
     const lastNameA = a.name.trim().split(' ').slice(-1)[0].toLowerCase();
@@ -70,7 +70,6 @@ function logoutAdmin() {
   openManagementTab();
 }
 
-// Główna funkcja ładująca dane z obsługą trybu awaryjnego lokalnego (Brak błędów!)
 async function loadData() {
   const listDiv = document.getElementById('playersList');
   try {
@@ -83,7 +82,7 @@ async function loadData() {
     teamsByDate = result.teamsByDate || {};
     useLocalFallback = false;
   } catch (err) {
-    console.warn("Przełączanie na tryb lokalny (localStorage failover):", err);
+    console.warn("Przełączanie na tryb awaryjny localStorage:", err);
     useLocalFallback = true;
     playersData = JSON.parse(localStorage.getItem('local_players')) || [];
     availableDates = JSON.parse(localStorage.getItem('local_dates')) || ["15.07.2026"];
@@ -117,9 +116,11 @@ function onDateChange() {
   render();
 }
 
-async function onCalendarPick(dateVal) {
-  if (!dateVal) return;
-  const parts = dateVal.split('-'); 
+async function createDateFromCalendar() {
+  const picker = document.getElementById('calendarPicker');
+  if (!picker || !picker.value) return alert("Wybierz poprawną datę z kalendarza!");
+  
+  const parts = picker.value.split('-'); 
   const formattedDate = `${parts[2]}.${parts[1]}.${parts[0]}`;
 
   if (!availableDates.includes(formattedDate)) {
@@ -136,6 +137,18 @@ async function onCalendarPick(dateVal) {
     selectedDate = formattedDate;
     setTimeout(loadData, 1000);
   } else {
+    selectedDate = formattedDate;
+    renderDates();
+    render();
+  }
+}
+
+// Obsługa kalendarza ze starej logiki (gdyby kliknięto input bezpośrednio)
+async function onCalendarPick(dateVal) {
+  if (!dateVal) return;
+  const parts = dateVal.split('-'); 
+  const formattedDate = `${parts[2]}.${parts[1]}.${parts[0]}`;
+  if (availableDates.includes(formattedDate)) {
     selectedDate = formattedDate;
     renderDates();
     render();
@@ -179,7 +192,7 @@ function render() {
   listDiv.innerHTML = '';
 
   if (playersData.length === 0) {
-    listDiv.innerHTML = '<p>Brak graczy. Dodaj ich w zakładce Zawodnicy.</p>';
+    listDiv.innerHTML = '<p>Brak graczy.</p>';
   } else {
     sortPlayersByLastName(playersData).forEach((p, idx) => {
       const status = (p.attendance && p.attendance[selectedDate]) ? p.attendance[selectedDate] : 'x';
@@ -234,7 +247,7 @@ function displayTeams(t1, t2) {
 
 async function generateTeams() {
   const active = playersData.filter(p => (p.attendance && p.attendance[selectedDate] === 'y'));
-  const size = parseInt(document.getElementById('gameModeSelect').value);
+  const size = 6; // Domyślnie na stałe tryb 6vs6 (12 graczy na boisku)
   const req = size * 2;
 
   if (active.length === 0) return alert("Brak obecnych graczy!");
@@ -289,29 +302,35 @@ async function recordMatch(winner) {
   } else {
     await fetch(SCRIPT_URL, { method: "POST", headers: { "Content-Type": "text/plain" }, body: JSON.stringify(payload) });
   }
-  alert("Mecz zapisany!");
+  alert("Wynik meczu został zaktualizowany!");
   setTimeout(loadData, 1000);
 }
 
 function renderManagePlayers() {
-  const container = document.getElementById('managePlayersList');
-  if (!container) return;
-  container.innerHTML = '';
+  const tbody = document.querySelector('#managePlayersTable tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
   sortPlayersByLastName(playersData).forEach(p => {
-    container.innerHTML += `
-      <div class="player-row">
-        <span><b>${p.name}</b> (Baza: ${p.baseRating} | Rating: ${p.currentRating} | Pkt: ${(p.wins * 3) + (p.draws * 1)})</span>
-        <div style="display:flex; gap:4px;">
-          <button class="btn-blue btn-small" onclick="updateRatingPrompt('${p.name}', ${p.baseRating})">Edytuj</button>
-          <button class="btn-danger btn-small" onclick="deletePlayer('${p.name}')">Usuń</button>
-        </div>
-      </div>`;
+    const points = (p.wins * 3) + (p.draws * 1);
+    tbody.innerHTML += `
+      <tr>
+        <td style="text-align:left;"><b>${p.name}</b></td>
+        <td>${p.baseRating}</td>
+        <td><strong>${p.currentRating}</strong></td>
+        <td><strong>${points}</strong></td>
+        <td>
+          <div style="display:flex; gap:3px; justify-content:center;">
+            <button class="btn-blue btn-small" onclick="updateRatingPrompt('${p.name}', ${p.baseRating})">Edytuj</button>
+            <button class="btn-danger btn-small" onclick="deletePlayer('${p.name}')">Usuń</button>
+          </div>
+        </td>
+      </tr>`;
   });
 }
 
 async function addPlayer() {
   const n = document.getElementById('pName').value.trim(), r = parseFloat(document.getElementById('pRating').value);
-  if (!n || isNaN(r)) return alert("Błędne dane!");
+  if (!n || isNaN(r)) return alert("Wprowadź poprawne dane!");
 
   if (useLocalFallback) {
     playersData.push({ name: n, baseRating: r, wins: 0, draws: 0, losses: 0, currentRating: r, attendance: {} });
@@ -324,7 +343,7 @@ async function addPlayer() {
 }
 
 async function deletePlayer(name) {
-  if (!confirm("Usunąć?")) return;
+  if (!confirm(`Czy na pewno usunąć zawodnika: ${name}?`)) return;
   if (useLocalFallback) {
     playersData = playersData.filter(x => x.name !== name);
     localStorage.setItem('local_players', JSON.stringify(playersData));
@@ -335,7 +354,7 @@ async function deletePlayer(name) {
 }
 
 async function updateRatingPrompt(name, currentBase) {
-  const r = prompt("Nowa ocena (1-10):", currentBase);
+  const r = prompt(`Ustaw nową ocenę bazową (1-10) dla ${name}:`, currentBase);
   if (!r || isNaN(parseFloat(r))) return;
   if (useLocalFallback) {
     let f = playersData.find(x => x.name === name);
@@ -350,8 +369,11 @@ async function updateRatingPrompt(name, currentBase) {
 function renderHistoryTable() {
   const thead = document.querySelector('#historyTable thead'), tbody = document.querySelector('#historyTable tbody');
   let head = `<tr><th>Zawodnik</th>`;
-  availableDates.forEach(d => head += `<th>${d}</th>`);
+  
+  // Skracanie formatu nagłówków dat do pierwszych 5 znaków (np. 09.07)
+  availableDates.forEach(d => head += `<th>${d.substring(0, 5)}</th>`);
   thead.innerHTML = head + `</tr>`;
+  
   tbody.innerHTML = '';
   sortPlayersByLastName(playersData).forEach(p => {
     let r = `<tr><td style="text-align:left;"><b>${p.name}</b></td>`;

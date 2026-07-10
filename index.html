@@ -11,7 +11,6 @@
     h2 { font-size: 1rem; margin-top: 0; margin-bottom: 8px; color: #007bff; border-bottom: 1px solid #eee; padding-bottom: 4px; }
     h3 { font-size: 0.95rem; margin: 4px 0; }
 
-    /* Menu Zakładek */
     .nav-tabs { display: flex; background: #fff; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 10px; overflow: hidden; }
     .nav-tab { flex: 1; padding: 8px 4px; text-align: center; background: #fff; border: none; font-size: 12px; font-weight: 600; cursor: pointer; transition: 0.2s; color: #555; border-bottom: 2px solid transparent; }
     .nav-tab.active { background: #eef5ff; color: #007bff; border-bottom: 2px solid #007bff; }
@@ -19,38 +18,30 @@
     .tab-content { display: none; }
     .tab-content.active { display: block; }
 
-    /* Karty */
     .card { background: white; padding: 10px; border-radius: 6px; margin-bottom: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
-    
-    /* Formularze */
     label { font-size: 12px; font-weight: 600; }
-    input, select { padding: 5px 7px; margin: 2px 0; border: 1px solid #ccc; border-radius: 4px; font-size: 12px; width: 100%; max-width: 100%; }
+    input, select { padding: 5px 7px; margin: 2px 0; border: 1px solid #ccc; border-radius: 4px; font-size: 12px; width: 100%; }
     .inline-field { display: flex; flex-direction: column; gap: 3px; margin-bottom: 6px; }
 
-    /* Przyciski */
     button { background-color: #28a745; color: white; border: none; padding: 7px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 600; margin: 2px 0; width: 100%; transition: 0.2s; }
     button:active { opacity: 0.8; }
     .btn-blue { background-color: #007bff; }
     .btn-danger { background-color: #dc3545; }
     .btn-small { padding: 3px 6px; font-size: 11px; width: auto; margin: 0; }
     
-    /* Kompaktowa lista zawodników */
     .player-row { display: flex; align-items: center; justify-content: space-between; padding: 3px 2px; border-bottom: 1px solid #f2f2f2; font-size: 12.5px; }
     .player-row:last-child { border-bottom: none; }
     .player-name { font-weight: 500; }
 
-    /* Dedykowane Przyciski Statusu Obecności */
-    .btn-status { width: 32px; height: 26px; padding: 0; font-size: 12px; font-weight: bold; border-radius: 4px; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+    .btn-status { width: 35px; height: 26px; padding: 0; font-size: 12px; font-weight: bold; border-radius: 4px; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; }
     .btn-status-y { background-color: #28a745; color: white; }
     .btn-status-x { background-color: #dc3545; color: white; }
 
-    /* Tabele */
     .table-container { overflow-x: auto; -webkit-overflow-scrolling: touch; margin-top: 5px; }
     table { width: 100%; border-collapse: collapse; font-size: 11.5px; white-space: nowrap; }
     th, td { border: 1px solid #e0e0e0; padding: 4px 6px; text-align: center; }
     th { background-color: #f8f9fa; color: #333; font-weight: 600; }
 
-    /* Wylosowane Składy */
     .teams-grid { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
     .team-box { background: #f8f9fa; padding: 8px; border-radius: 5px; border: 1px solid #e9ecef; }
     .team-box ul { margin: 4px 0 0 0; padding-left: 18px; font-size: 12px; }
@@ -102,10 +93,10 @@
 
     <section class="card">
       <h2>📋 Lista Obecności: <span id="selectedDateTitle" style="color:#333;">-</span></h2>
-      <div id="playersList">Ładowanie danych...</div>
+      <div id="playersList">Ładowanie...</div>
       <div style="margin-top: 8px; display: flex; gap: 5px;">
-        <button onclick="saveAttendance()" style="flex: 1;">💾 Zapisz</button>
-        <button class="btn-blue" onclick="generateTeams()" style="flex: 1;">🎲 Losuj</button>
+        <button onclick="saveAttendance()" style="flex: 1;">💾 Zapisz Obecności</button>
+        <button class="btn-blue" onclick="generateTeams()" style="flex: 1;">🎲 Losuj Składy</button>
       </div>
     </section>
 
@@ -145,11 +136,9 @@
   </div>
 
   <div id="tab-players" class="tab-content">
-    
     <div id="auth-container" class="card" style="max-width: 300px; margin: 15px auto; text-align: center;">
       <h3>🔒 Logowanie</h3>
-      <p style="font-size: 11px; color: #666; margin: 4px 0 8px 0;">Podaj hasło administratora:</p>
-      <input type="password" id="admin-password-input" placeholder="Hasło..." style="margin-bottom: 6px;">
+      <input type="password" id="admin-password-input" placeholder="Hasło...">
       <button onclick="checkAdminPassword()">Zaloguj</button>
       <p id="auth-error" style="color: red; display: none; margin-top: 6px; font-size: 11px;">Błędne hasło!</p>
     </div>
@@ -159,16 +148,12 @@
         <h2 style="margin:0; border:none; padding:0;">⚙️ Zarządzanie</h2>
         <button onclick="logoutAdmin()" class="btn-danger btn-small">Wyloguj</button>
       </div>
-
       <section class="card">
         <h2>➕ Dodaj Zawodnika</h2>
-        <div style="display: flex; flex-direction: column; gap: 4px;">
-          <input type="text" id="pName" placeholder="Imię i Nazwisko">
-          <input type="number" id="pRating" placeholder="Ocena bazowa (1-10)" min="1" max="10" step="0.5">
-          <button onclick="addPlayer()">Dodaj</button>
-        </div>
+        <input type="text" id="pName" placeholder="Imię i Nazwisko">
+        <input type="number" id="pRating" placeholder="Ocena bazowa (1-10)" min="1" max="10" step="0.5">
+        <button onclick="addPlayer()">Dodaj</button>
       </section>
-
       <section class="card">
         <h2>⚙️ Lista Zawodników (Alfabetycznie)</h2>
         <div id="managePlayersList"></div>

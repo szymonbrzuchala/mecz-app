@@ -34,7 +34,7 @@
     .btn-danger { background-color: #dc3545; }
     .btn-small { padding: 3px 6px; font-size: 11px; width: auto; margin: 0; }
     
-    /* Kompaktowa lista zawodników (Super-Ciasny Układ) */
+    /* Kompaktowa lista zawodników */
     .player-row { display: flex; align-items: center; justify-content: space-between; padding: 3px 2px; border-bottom: 1px solid #f2f2f2; font-size: 12.5px; }
     .player-row:last-child { border-bottom: none; }
     .player-name { font-weight: 500; }
@@ -59,7 +59,6 @@
     .match-buttons-row { display: flex; flex-direction: column; gap: 5px; margin-top: 10px; }
     .match-btn { padding: 9px; font-size: 12px; margin: 0; }
 
-    /* Desktop Adjustments */
     @media (min-width: 600px) {
       body { max-width: 750px; margin: 0 auto; padding: 15px; }
       .inline-field { flex-direction: row; align-items: center; justify-content: space-between; }
@@ -111,13 +110,13 @@
     </section>
 
     <section class="card" id="matchSection" style="display:none;">
-      <h2>⚖️ Wylosowane Składy</h2>
+      <h2>⚖️ Ostatnio Wylosowane Składy</h2>
       <div class="teams-grid">
         <div id="team1Box" class="team-box"></div>
         <div id="team2Box" class="team-box"></div>
       </div>
       
-      <h3 style="margin-top: 10px;">Wynik Meczu:</h3>
+      <h3 style="margin-top: 10px;">Dodaj Wynik Meczu:</h3>
       <div class="match-buttons-row">
         <button class="match-btn btn-blue" onclick="recordMatch(1)">👈 Wygrana A</button>
         <button class="match-btn" style="background-color: #6c757d;" onclick="recordMatch(0)">🤝 Remis</button>
@@ -126,17 +125,17 @@
     </section>
 
     <section class="card">
-      <h2>🏆 Tabela Aktualna</h2>
+      <h2>🏆 Tabela Ligowa</h2>
       <div class="table-container">
         <table id="rankTable">
           <thead>
             <tr>
               <th>#</th>
               <th style="text-align: left;">Gracz</th>
+              <th>Pkt</th>
               <th>W</th>
               <th>D</th>
               <th>L</th>
-              <th>Rating</th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -165,13 +164,13 @@
         <h2>➕ Dodaj Zawodnika</h2>
         <div style="display: flex; flex-direction: column; gap: 4px;">
           <input type="text" id="pName" placeholder="Imię i Nazwisko">
-          <input type="number" id="pRating" placeholder="Ocena (1-10)" min="1" max="10" step="0.5">
+          <input type="number" id="pRating" placeholder="Ocena bazowa (1-10)" min="1" max="10" step="0.5">
           <button onclick="addPlayer()">Dodaj</button>
         </div>
       </section>
 
       <section class="card">
-        <h2>⚙️ Lista Zawodników</h2>
+        <h2>⚙️ Lista Zawodników (Alfabetycznie)</h2>
         <div id="managePlayersList"></div>
       </section>
     </div>
